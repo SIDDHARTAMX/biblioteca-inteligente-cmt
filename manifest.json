@@ -1,0 +1,8 @@
+{
+  "name":"Biblioteca Inteligente CMT",
+  "short_name":"BiblioCMT",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#F7F4F0",
+  "theme_color":"#56212F"
+}
