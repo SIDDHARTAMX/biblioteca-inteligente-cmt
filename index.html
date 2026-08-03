@@ -3,55 +3,95 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Biblioteca Inteligente CMT V5</title>
+<title>Biblioteca Inteligente CMT V6</title>
 <style>
 :root{--g:#56212F;--d:#977E5B;--b:#DFD0B9;--f:#F5F2EE;--v:#247A3B;--r:#AE2E24}
 *{box-sizing:border-box}body{margin:0;font-family:Arial;background:var(--f);color:#222}
 header{background:var(--g);color:#fff;padding:18px 22px}header h1{margin:0;font-size:1.35rem}
-main{max-width:1200px;margin:auto;padding:20px}
+main{max-width:1200px;margin:auto;padding:18px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
 .tab{background:#ddd}.tab.activa,.primario{background:var(--g);color:#fff}.secundario{background:var(--d);color:#fff}
 .panel{background:#fff;border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,.08);margin-bottom:16px}
-.busqueda{display:grid;grid-template-columns:1fr auto;gap:10px}
-input,select{width:100%;padding:12px;border:1px solid #bbb;border-radius:10px;font:inherit}
-.resultados{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+input,select,textarea{width:100%;padding:12px;border:1px solid #bbb;border-radius:10px;font:inherit}
+textarea{min-height:80px}.resultados{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:13px;margin-top:15px}
 .card{border:1px solid #ddd;border-radius:14px;padding:15px;background:#fff}.card h3{color:var(--g);margin:0 0 8px}
-.ubicacion-form{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .estado{margin-top:10px;color:#555}.ok{color:var(--v);font-weight:700}.error{color:var(--r);font-weight:700}
-.oculto{display:none}
-@media(max-width:700px){.ubicacion-form{grid-template-columns:1fr 1fr}}
+.oculto{display:none}.fila{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.grid,.grid4{grid-template-columns:1fr}.fila>*{width:100%}}
 </style>
 </head>
 <body>
-<header><h1>Biblioteca Inteligente CMT · Ubicaciones</h1></header>
+<header><h1>Biblioteca Inteligente CMT · Gestión</h1></header>
 <main>
 <div class="tabs">
-<button class="tab activa" onclick="ver('consulta',this)">Buscar</button>
-<button class="tab" onclick="ver('ubicaciones',this)">Asignar ubicaciones</button>
+<button class="tab activa" onclick="ver('catalogo',this)">Catálogo</button>
+<button class="tab" onclick="ver('usuarios',this)">Usuarios</button>
+<button class="tab" onclick="ver('prestamos',this)">Préstamos</button>
+<button class="tab" onclick="ver('devoluciones',this)">Devoluciones</button>
+<button class="tab" onclick="ver('ubicaciones',this)">Ubicaciones</button>
 </div>
 
-<section id="consulta" class="panel">
-<h2>Buscar materiales</h2>
-<div class="busqueda">
-<input id="q" placeholder="Título, autor o ISBN">
-<button class="primario" onclick="buscar()">Buscar</button>
+<section id="catalogo" class="panel">
+<h2>Buscar libros</h2>
+<div class="fila"><input id="qLibro" placeholder="Título, autor o ISBN"><button class="primario" onclick="buscarLibro()">Buscar</button></div>
+<div id="estadoLibro" class="estado"></div>
+<div id="resLibros" class="resultados"></div>
+</section>
+
+<section id="usuarios" class="panel oculto">
+<h2>Registrar usuario</h2>
+<div class="grid">
+<input id="uNombre" placeholder="Nombre completo">
+<select id="uTipo"><option>Docente</option><option>Estudiante</option><option>Administrativo</option><option>Visitante</option></select>
+<input id="uInstitucion" placeholder="Institución">
+<input id="uTelefono" placeholder="Teléfono">
+<input id="uCorreo" placeholder="Correo">
+<input id="uObs" placeholder="Observaciones">
 </div>
-<div id="estadoBusqueda" class="estado"></div>
-<div id="resultadosBusqueda" class="resultados"></div>
+<div style="margin-top:10px"><input id="claveUsuarios" type="password" placeholder="Clave administrativa"></div>
+<button class="primario" style="margin-top:10px" onclick="registrarUsuario()">Guardar usuario</button>
+<div id="estadoUsuario" class="estado"></div>
+</section>
+
+<section id="prestamos" class="panel oculto">
+<h2>Registrar préstamo</h2>
+<div class="grid">
+<input id="pEjemplar" placeholder="Código de ejemplar, ej. CMT-0000001">
+<input id="pUsuario" placeholder="Código de usuario, ej. USR-000001">
+<input id="pDias" type="number" value="7" min="1" placeholder="Días">
+<input id="pResponsable" placeholder="Responsable">
+</div>
+<div style="margin-top:10px"><input id="clavePrestamo" type="password" placeholder="Clave administrativa"></div>
+<button class="primario" style="margin-top:10px" onclick="registrarPrestamo()">Registrar préstamo</button>
+<div id="estadoPrestamo" class="estado"></div>
+</section>
+
+<section id="devoluciones" class="panel oculto">
+<h2>Préstamos activos</h2>
+<div class="fila">
+<input id="qPrestamo" placeholder="Título, usuario, código de préstamo o ejemplar">
+<input id="claveDevolucion" type="password" placeholder="Clave administrativa">
+<button class="primario" onclick="cargarPrestamos()">Buscar</button>
+</div>
+<div id="estadoDevolucion" class="estado"></div>
+<div id="listaPrestamos" class="resultados"></div>
 </section>
 
 <section id="ubicaciones" class="panel oculto">
-<h2>Ejemplares sin ubicación</h2>
-<div class="busqueda">
-<input id="qSinUbicar" placeholder="Filtrar por título, autor o código">
-<button class="primario" onclick="cargarSinUbicar()">Cargar</button>
+<h2>Asignar ubicación</h2>
+<div class="grid4">
+<input id="ubEjemplar" placeholder="Código ejemplar">
+<input id="ubSala" placeholder="Sala">
+<input id="ubEstante" placeholder="Estante">
+<input id="ubRepisa" placeholder="Repisa">
+<input id="ubPosicion" placeholder="Posición">
+<input id="claveUbicacion" type="password" placeholder="Clave administrativa">
 </div>
-<div style="margin-top:10px">
-<input id="claveAdmin" type="password" placeholder="Clave administrativa">
-</div>
-<div id="estadoUbicaciones" class="estado"></div>
-<div id="listaSinUbicar" class="resultados"></div>
+<button class="primario" style="margin-top:10px" onclick="guardarUbicacion()">Guardar ubicación</button>
+<div id="estadoUbicacion" class="estado"></div>
 </section>
 </main>
 
@@ -67,76 +107,64 @@ function jsonp(params){
   s.onerror=()=>{limpiar();reject(new Error('No se pudo conectar.'))};s.src=u;document.body.appendChild(s);
  });
 }
-
 function esc(t){return String(t??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
+function ver(id,b){document.querySelectorAll('section').forEach(x=>x.classList.add('oculto'));document.getElementById(id).classList.remove('oculto');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('activa'));b.classList.add('activa')}
 
-function ver(id,b){
- document.querySelectorAll('section').forEach(x=>x.classList.add('oculto'));
- document.getElementById(id).classList.remove('oculto');
- document.querySelectorAll('.tab').forEach(x=>x.classList.remove('activa'));b.classList.add('activa');
-}
-
-async function buscar(){
- const q=document.getElementById('q').value.trim(),e=document.getElementById('estadoBusqueda');
- if(!q){e.textContent='Escribe una consulta.';return}
+async function buscarLibro(){
+ const q=document.getElementById('qLibro').value.trim(),e=document.getElementById('estadoLibro');
+ if(!q){e.textContent='Escribe una búsqueda.';return}
  e.textContent='Buscando…';
  try{
   const r=await jsonp({accion:'buscar',q});
   e.textContent=`${r.length} resultado(s).`;
-  document.getElementById('resultadosBusqueda').innerHTML=r.map(x=>`
-   <article class="card"><h3>${esc(x.titulo)}</h3>
-   <div><b>Autor:</b> ${esc(x.autor)}</div>
+  document.getElementById('resLibros').innerHTML=r.map(x=>`
+   <article class="card"><h3>${esc(x.titulo)}</h3><div><b>Autor:</b> ${esc(x.autor)}</div>
    <div><b>Disponibles:</b> ${x.disponibles} de ${x.totalEjemplares}</div>
-   ${(x.ubicaciones&&x.ubicaciones.length)?x.ubicaciones.map(u=>`<div>📍 ${esc(u)}</div>`).join(''):'<div>📍 Sin ubicación</div>'}
+   ${(x.ejemplaresDisponibles||[]).map(e=>`<div>📘 ${esc(e.idEjemplar)} · ${esc(e.ubicacion)}</div>`).join('')}
    </article>`).join('');
  }catch(err){e.textContent=err.message}
 }
 
-async function cargarSinUbicar(){
- const clave=document.getElementById('claveAdmin').value.trim();
- const q=document.getElementById('qSinUbicar').value.trim();
- const e=document.getElementById('estadoUbicaciones');
- if(!clave){e.textContent='Escribe la clave administrativa.';return}
+async function registrarUsuario(){
+ const e=document.getElementById('estadoUsuario');
+ const datos={accion:'registrarUsuario',clave:claveUsuarios.value,nombre:uNombre.value,tipo:uTipo.value,institucion:uInstitucion.value,telefono:uTelefono.value,correo:uCorreo.value,observaciones:uObs.value};
+ e.textContent='Guardando…';
+ try{const r=await jsonp(datos);e.textContent=`${r.mensaje} Código: ${r.idUsuario}`;e.className='estado ok'}catch(err){e.textContent=err.message;e.className='estado error'}
+}
+
+async function registrarPrestamo(){
+ const e=document.getElementById('estadoPrestamo');
+ const datos={accion:'registrarPrestamo',clave:clavePrestamo.value,idEjemplar:pEjemplar.value,idUsuario:pUsuario.value,dias:pDias.value,responsable:pResponsable.value};
+ e.textContent='Guardando…';
+ try{const r=await jsonp(datos);e.textContent=`${r.mensaje} ${r.idPrestamo}. Devolver antes del ${r.fechaLimite}`;e.className='estado ok'}catch(err){e.textContent=err.message;e.className='estado error'}
+}
+
+async function cargarPrestamos(){
+ const e=document.getElementById('estadoDevolucion');
  e.textContent='Cargando…';
  try{
-  const r=await jsonp({accion:'sinUbicar',clave,q,limite:100});
-  e.textContent=`${r.length} ejemplar(es) sin ubicar.`;
-  document.getElementById('listaSinUbicar').innerHTML=r.map(x=>`
-   <article class="card" id="card_${esc(x.idEjemplar)}">
-    <h3>${esc(x.titulo)}</h3>
-    <div><b>Código:</b> ${esc(x.idEjemplar)}</div>
-    <div><b>Autor:</b> ${esc(x.autor)}</div>
-    <div class="ubicacion-form">
-      <input id="s_${esc(x.idEjemplar)}" placeholder="Sala">
-      <input id="e_${esc(x.idEjemplar)}" placeholder="Estante">
-      <input id="r_${esc(x.idEjemplar)}" placeholder="Repisa">
-      <input id="p_${esc(x.idEjemplar)}" placeholder="Posición">
-    </div>
-    <button class="secundario" style="margin-top:10px" onclick="guardarUbicacion('${esc(x.idEjemplar)}')">Guardar ubicación</button>
-    <div id="m_${esc(x.idEjemplar)}" class="estado"></div>
-   </article>`).join('');
+  const r=await jsonp({accion:'prestamosActivos',clave:claveDevolucion.value,q:qPrestamo.value});
+  e.textContent=`${r.length} préstamo(s) activo(s).`;
+  listaPrestamos.innerHTML=r.map(x=>`<article class="card"><h3>${esc(x.titulo)}</h3>
+   <div><b>Usuario:</b> ${esc(x.usuario)}</div><div><b>Ejemplar:</b> ${esc(x.idEjemplar)}</div>
+   <div><b>Préstamo:</b> ${esc(x.idPrestamo)}</div><div><b>Fecha límite:</b> ${esc(x.fechaLimite)}</div>
+   <button class="secundario" style="margin-top:10px" onclick="devolver('${esc(x.idPrestamo)}')">Registrar devolución</button>
+   <div id="m_${esc(x.idPrestamo)}" class="estado"></div></article>`).join('');
  }catch(err){e.textContent=err.message}
 }
 
-async function guardarUbicacion(id){
- const clave=document.getElementById('claveAdmin').value.trim();
- const mensaje=document.getElementById('m_'+id);
- const datos={
-  accion:'guardarUbicacion',clave,idEjemplar:id,
-  sala:document.getElementById('s_'+id).value.trim(),
-  estante:document.getElementById('e_'+id).value.trim(),
-  repisa:document.getElementById('r_'+id).value.trim(),
-  posicion:document.getElementById('p_'+id).value.trim()
- };
- mensaje.textContent='Guardando…';mensaje.className='estado';
- try{
-  const r=await jsonp(datos);
-  mensaje.textContent=r.mensaje+' '+r.ubicacion;mensaje.className='estado ok';
-  setTimeout(()=>document.getElementById('card_'+id)?.remove(),800);
- }catch(err){mensaje.textContent=err.message;mensaje.className='estado error'}
+async function devolver(id){
+ const e=document.getElementById('m_'+id);e.textContent='Procesando…';
+ try{const r=await jsonp({accion:'registrarDevolucion',clave:claveDevolucion.value,idPrestamo:id});e.textContent=`${r.mensaje} Retraso: ${r.diasRetraso} día(s).`;e.className='estado ok'}catch(err){e.textContent=err.message;e.className='estado error'}
 }
 
-document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')buscar()});
+async function guardarUbicacion(){
+ const e=document.getElementById('estadoUbicacion');e.textContent='Guardando…';
+ try{
+  const r=await jsonp({accion:'guardarUbicacion',clave:claveUbicacion.value,idEjemplar:ubEjemplar.value,sala:ubSala.value,estante:ubEstante.value,repisa:ubRepisa.value,posicion:ubPosicion.value});
+  e.textContent=`${r.mensaje} ${r.ubicacion}`;e.className='estado ok'
+ }catch(err){e.textContent=err.message;e.className='estado error'}
+}
 </script>
 </body>
 </html>
