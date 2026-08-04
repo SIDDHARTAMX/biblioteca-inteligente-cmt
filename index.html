@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#56212F">
-<title>Biblioteca Inteligente CMT</title>
+<title>Biblioteca Inteligente CMT V9</title>
 <style>
 :root{
   --g:#56212F;--d:#977E5B;--b:#DFD0B9;--f:#F5F2EE;
@@ -47,7 +47,7 @@ textarea{min-height:90px}
 <body>
 <header>
   <h1>Biblioteca Inteligente CMT</h1>
-  <p>Catálogo, usuarios, préstamos, devoluciones, ubicaciones y registro inteligente</p>
+  <p>Versión V9 · Catálogo propio + Open Library</p>
   <div id="estadoApi" class="api-status">Comprobando backend…</div>
 </header>
 
@@ -183,7 +183,7 @@ textarea{min-height:90px}
 </main>
 
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbz6O-vI27BanC1bU8g1rOwYwzqZFmkocc07NrnesRFd6uJ3x8Y07W3FHeBJmgqMrLGNkg/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbys4LU3rtWQ6USt_YFNQuCQwhNnCCFIatwx5exA3pC1OKIQDFRaaNoV1MC9uJbcsQA6IA/exec';
 
 function jsonp(params){
  return new Promise((resolve,reject)=>{
@@ -223,139 +223,97 @@ async function buscarLibro(){
  }catch(err){estadoLibro.textContent=err.message;estadoLibro.className='estado error'}
 }
 
-async function consultarISBN() {
-  const estado = document.getElementById('riEstadoConsulta');
-
-  const isbn = document
-    .getElementById('riIsbnConsulta')
-    .value
-    .replace(/[^0-9Xx]/g, '')
-    .toUpperCase()
-    .trim();
-
-  estado.className = 'estado';
-
-  if (isbn.length !== 10 && isbn.length !== 13) {
-    estado.textContent = 'El ISBN debe contener 10 o 13 caracteres.';
-    estado.className = 'estado error';
-    return;
-  }
-
-  estado.textContent = 'Consultando Google Books…';
-  document.getElementById('riCoincidencias').innerHTML = '';
-
-  try {
-    const url =
-      'https://www.googleapis.com/books/v1/volumes' +
-      '?q=' + encodeURIComponent('isbn:' + isbn) +
-      '&maxResults=5';
-
-    const respuesta = await fetch(url);
-
-    if (!respuesta.ok) {
-      throw new Error(
-        'Google Books respondió con el código ' +
-        respuesta.status
-      );
-    }
-
-    const datos = await respuesta.json();
-
-    if (!datos.items || datos.items.length === 0) {
-      estado.textContent =
-        'No se encontró información para este ISBN. ' +
-        'Puedes capturar los datos manualmente.';
-
-      document.getElementById('riIsbnFinal').value = isbn;
-      return;
-    }
-
-    const coincidencias = datos.items.map(item => {
-      const info = item.volumeInfo || {};
-      const identificadores = info.industryIdentifiers || [];
-
-      const obtenerISBN = tipo => {
-        const encontrado = identificadores.find(
-          elemento => elemento.type === tipo
-        );
-
-        return encontrado ? encontrado.identifier : '';
-      };
-
-      const coincidenciaAnio = String(
-        info.publishedDate || ''
-      ).match(/(19|20)\d{2}/);
-
-      const portada =
-        info.imageLinks &&
-        (
-          info.imageLinks.thumbnail ||
-          info.imageLinks.smallThumbnail
-        )
-          ? String(
-              info.imageLinks.thumbnail ||
-              info.imageLinks.smallThumbnail
-            ).replace('http://', 'https://')
-          : '';
-
-      return {
-        titulo: info.title || '',
-        autores: Array.isArray(info.authors)
-          ? info.authors.join(', ')
-          : '',
-        editorial: info.publisher || '',
-        anio: coincidenciaAnio
-          ? coincidenciaAnio[0]
-          : '',
-        isbn13: obtenerISBN('ISBN_13'),
-        isbn10: obtenerISBN('ISBN_10'),
-        categorias: Array.isArray(info.categories)
-          ? info.categories.join(', ')
-          : '',
-        descripcion: info.description || '',
-        portada: portada
-      };
-    });
-
-    estado.textContent =
-      coincidencias.length +
-      ' coincidencia(s) encontrada(s).';
-
-    document.getElementById('riCoincidencias').innerHTML =
-      coincidencias.map(libro => `
-        <div class="coincidencia">
-          <b>${esc(libro.titulo)}</b>
-
-          <div>
-            ${esc(libro.autores)}
-          </div>
-
-          <div>
-            ${esc(libro.editorial)}
-            ${libro.anio
-              ? ' · ' + esc(libro.anio)
-              : ''}
-          </div>
-
-          <button
-            class="secundario"
-            style="margin-top:8px"
-            onclick='usarFicha(${JSON.stringify(libro)})'>
-            Usar esta ficha
-          </button>
-        </div>
-      `).join('');
-
-    usarFicha(coincidencias[0]);
-
-  } catch (error) {
-    estado.textContent =
-      'No se pudo consultar Google Books: ' +
-      error.message;
-
-    estado.className = 'estado error';
-  }
+function limpiarISBN(valor){
+ return String(valor||'').replace(/[^0-9Xx]/g,'').toUpperCase().trim();
 }
+
+async function consultarISBN(){
+ const estado=riEstadoConsulta;
+ const isbn=limpiarISBN(riIsbnConsulta.value);
+ estado.className='estado';
+ riCoincidencias.innerHTML='';
+
+ if(isbn.length!==10 && isbn.length!==13){
+  estado.textContent='El ISBN debe contener 10 o 13 caracteres.';
+  estado.className='estado error';
+  return;
+ }
+
+ try{
+  estado.textContent='Buscando primero en el catálogo propio…';
+  const propios=await jsonp({accion:'buscar',q:isbn});
+
+  if(propios.length){
+   const lista=propios.map(x=>({
+    fuente:'Catálogo CMT',titulo:x.titulo||'',autores:x.autor||'',
+    editorial:x.editorial||'',anio:x.anio||'',
+    isbn13:isbn.length===13?isbn:'',isbn10:isbn.length===10?isbn:'',
+    categorias:'',descripcion:'',portada:''
+   }));
+   estado.textContent='El ISBN ya existe en tu catálogo. Puedes agregar otro ejemplar.';
+   mostrarCoincidenciasV9(lista);
+   usarFicha(lista[0]);
+   return;
+  }
+
+  estado.textContent='No está en el catálogo. Consultando Open Library…';
+  const lista=await consultarOpenLibrary(isbn);
+
+  if(!lista.length){
+   estado.textContent='No se encontró información en Open Library. Puedes capturar la ficha manualmente.';
+   riIsbnFinal.value=isbn;
+   return;
+  }
+
+  estado.textContent=lista.length+' coincidencia(s) encontrada(s) en Open Library.';
+  estado.className='estado ok';
+  mostrarCoincidenciasV9(lista);
+  usarFicha(lista[0]);
+ }catch(err){
+  estado.textContent='No fue posible consultar los datos: '+err.message;
+  estado.className='estado error';
+ }
+}
+
+async function consultarOpenLibrary(isbn){
+ const url1='https://openlibrary.org/api/books?bibkeys=ISBN:'+encodeURIComponent(isbn)+'&format=json&jscmd=data';
+ try{
+  const r1=await fetch(url1);
+  if(r1.ok){
+   const data=await r1.json();
+   const b=data['ISBN:'+isbn];
+   if(b){
+    return [{
+     fuente:'Open Library',titulo:b.title||'',
+     autores:Array.isArray(b.authors)?b.authors.map(a=>a.name).join(', '):'',
+     editorial:Array.isArray(b.publishers)?b.publishers.map(p=>p.name).join(', '):'',
+     anio:b.publish_date||'',isbn13:isbn.length===13?isbn:'',isbn10:isbn.length===10?isbn:'',
+     categorias:Array.isArray(b.subjects)?b.subjects.slice(0,8).map(s=>s.name).join(', '):'',
+     descripcion:'',portada:b.cover&&b.cover.medium?b.cover.medium:''
+    }];
+   }
+  }
+ }catch(e){}
+
+ const url2='https://openlibrary.org/search.json?isbn='+encodeURIComponent(isbn)+'&limit=5';
+ const r2=await fetch(url2);
+ if(!r2.ok) throw new Error('Open Library respondió con código '+r2.status);
+ const data2=await r2.json();
+ if(!data2.docs||!data2.docs.length) return [];
+ return data2.docs.map(b=>({
+  fuente:'Open Library',titulo:b.title||'',
+  autores:Array.isArray(b.author_name)?b.author_name.join(', '):'',
+  editorial:Array.isArray(b.publisher)?b.publisher[0]||'':'',
+  anio:b.first_publish_year||'',isbn13:isbn.length===13?isbn:'',isbn10:isbn.length===10?isbn:'',
+  categorias:Array.isArray(b.subject)?b.subject.slice(0,8).join(', '):'',descripcion:'',
+  portada:b.cover_i?'https://covers.openlibrary.org/b/id/'+b.cover_i+'-M.jpg':''
+ }));
+}
+
+function mostrarCoincidenciasV9(lista){
+ riCoincidencias.innerHTML=lista.map(x=>`<div class="coincidencia"><b>${esc(x.titulo)}</b><div>${esc(x.autores)}</div><div>${esc(x.editorial)} ${x.anio?'· '+esc(x.anio):''}</div><small>${esc(x.fuente||'Fuente externa')}</small><br><button class="secundario" style="margin-top:8px" onclick='usarFicha(${JSON.stringify(x)})'>Usar esta ficha</button></div>`).join('');
+}
+
 function usarFicha(x){
  riTitulo.value=x.titulo||'';riAutor.value=x.autores||'';riEditorial.value=x.editorial||'';
  riAnio.value=x.anio||'';riIsbnFinal.value=x.isbn13||x.isbn10||riIsbnConsulta.value;
