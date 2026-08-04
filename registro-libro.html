@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Registrar libro · Biblioteca CMT</title>
+<style>
+body{font-family:Arial;margin:0;background:#f5f2ee}header{background:#56212f;color:white;padding:20px}
+main{max-width:980px;margin:auto;padding:18px}.p{background:white;padding:18px;border-radius:15px;margin-bottom:15px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+input,select,textarea,button{font:inherit;border-radius:9px}input,select,textarea{padding:11px;border:1px solid #bbb;width:100%;box-sizing:border-box}
+textarea{min-height:90px}button{padding:11px 15px;border:0;background:#56212f;color:white;font-weight:bold;cursor:pointer}
+.ok{color:#247a3b;font-weight:bold}.error{color:#ae2e24;font-weight:bold}img{max-width:140px;border-radius:8px;display:none}
+@media(max-width:700px){.g,.g4{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><h2>Registro inteligente de libros</h2></header>
+<main>
+<section class="p">
+<h3>1. Consultar ISBN</h3>
+<div class="g">
+<input id="isbn" placeholder="ISBN">
+<input id="clave" type="password" placeholder="Clave administrativa">
+</div><br>
+<button onclick="consultar()">Consultar datos</button>
+<div id="m1"></div>
+</section>
+
+<section class="p">
+<h3>2. Confirmar ficha</h3>
+<img id="img">
+<div class="g">
+<input id="titulo" placeholder="Título *"><input id="autor" placeholder="Autor">
+<input id="editorial" placeholder="Editorial"><input id="anio" placeholder="Año">
+<input id="isbn2" placeholder="ISBN"><input id="seccion" placeholder="Tema o sección">
+<input id="nivel" placeholder="Nivel"><input id="palabras" placeholder="Palabras clave">
+<input id="portada" placeholder="URL de portada">
+<select id="tipo"><option>Libro</option><option>Antología</option><option>Audio</option><option>Multimedia</option></select>
+</div><br><textarea id="descripcion" placeholder="Descripción"></textarea>
+</section>
+
+<section class="p">
+<h3>3. Ubicación</h3>
+<div class="g4">
+<input id="sala" placeholder="Sala"><input id="estante" placeholder="Estante">
+<input id="repisa" placeholder="Repisa"><input id="posicion" placeholder="Posición">
+</div><br>
+<div class="g">
+<select id="condicion"><option>Excelente</option><option selected>Bueno</option><option>Regular</option><option>Dañado</option></select>
+<input id="obs" placeholder="Observaciones">
+</div><br>
+<button onclick="guardar()">Guardar libro y ejemplar</button>
+<div id="m2"></div>
+</section>
+</main>
+
+<script>
+const API_URL='PEGA_AQUI_TU_URL_V7_COMPLETA';
+
+function jsonp(p){return new Promise((ok,no)=>{
+ const cb='cb_'+Date.now(),s=document.createElement('script'),u=new URL(API_URL);
+ Object.entries(p).forEach(([k,v])=>u.searchParams.set(k,v??''));u.searchParams.set('callback',cb);
+ const clean=()=>{delete window[cb];s.remove()};
+ window[cb]=r=>{clean();r&&r.ok?ok(r.datos):no(new Error(r&&r.error?r.error:'Error'))};
+ s.onerror=()=>{clean();no(new Error('No se pudo conectar.'))};s.src=u;document.body.appendChild(s);
+})}
+
+async function consultar(){
+ const m=document.getElementById('m1');m.textContent='Consultando...';
+ try{
+  const r=await jsonp({accion:'consultarISBN',clave:clave.value,isbn:isbn.value});
+  if(!r.encontrado){m.textContent=r.mensaje;isbn2.value=r.isbn;return}
+  const x=r.coincidencias[0];
+  titulo.value=x.titulo;autor.value=x.autores;editorial.value=x.editorial;anio.value=x.anio;
+  isbn2.value=x.isbn13||x.isbn10||isbn.value;seccion.value=x.categorias;palabras.value=x.categorias;
+  descripcion.value=x.descripcion;portada.value=x.portada;
+  if(x.portada){img.src=x.portada;img.style.display='block'}
+  m.textContent='Datos encontrados. Revisa antes de guardar.';m.className='ok';
+ }catch(e){m.textContent=e.message;m.className='error'}
+}
+
+async function guardar(){
+ const m=document.getElementById('m2');m.textContent='Guardando...';
+ try{
+  const r=await jsonp({
+   accion:'registrarLibroInteligente',clave:clave.value,titulo:titulo.value,autor:autor.value,
+   editorial:editorial.value,anio:anio.value,isbn:isbn2.value,tipoMaterial:tipo.value,
+   seccion:seccion.value,nivel:nivel.value,palabrasClave:palabras.value,
+   descripcion:descripcion.value,portada:portada.value,sala:sala.value,estante:estante.value,
+   repisa:repisa.value,posicion:posicion.value,condicion:condicion.value,observaciones:obs.value
+  });
+  m.textContent=r.mensaje+' Título: '+r.idTitulo+' · Ejemplar: '+r.idEjemplar+' · '+r.ubicacion;
+  m.className='ok';
+ }catch(e){m.textContent=e.message;m.className='error'}
+}
+</script></body></html>
