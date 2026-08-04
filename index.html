@@ -223,17 +223,139 @@ async function buscarLibro(){
  }catch(err){estadoLibro.textContent=err.message;estadoLibro.className='estado error'}
 }
 
-async function consultarISBN(){
- riEstadoConsulta.textContent='Consultando…';riEstadoConsulta.className='estado';
- try{
-  const r=await jsonp({accion:'consultarISBN',clave:riClave.value,isbn:riIsbnConsulta.value});
-  if(!r.encontrado){riEstadoConsulta.textContent=r.mensaje;riIsbnFinal.value=r.isbn;return}
-  riEstadoConsulta.textContent=r.coincidencias.length+' coincidencia(s).';
-  riCoincidencias.innerHTML=r.coincidencias.map((x,i)=>`<div class="coincidencia"><b>${esc(x.titulo)}</b><div>${esc(x.autores)}</div><div>${esc(x.editorial)} ${x.anio?'· '+esc(x.anio):''}</div><button class="secundario" style="margin-top:8px" onclick='usarFicha(${JSON.stringify(x)})'>Usar esta ficha</button></div>`).join('');
-  if(r.coincidencias.length) usarFicha(r.coincidencias[0]);
- }catch(err){riEstadoConsulta.textContent=err.message;riEstadoConsulta.className='estado error'}
-}
+async function consultarISBN() {
+  const estado = document.getElementById('riEstadoConsulta');
 
+  const isbn = document
+    .getElementById('riIsbnConsulta')
+    .value
+    .replace(/[^0-9Xx]/g, '')
+    .toUpperCase()
+    .trim();
+
+  estado.className = 'estado';
+
+  if (isbn.length !== 10 && isbn.length !== 13) {
+    estado.textContent = 'El ISBN debe contener 10 o 13 caracteres.';
+    estado.className = 'estado error';
+    return;
+  }
+
+  estado.textContent = 'Consultando Google Books…';
+  document.getElementById('riCoincidencias').innerHTML = '';
+
+  try {
+    const url =
+      'https://www.googleapis.com/books/v1/volumes' +
+      '?q=' + encodeURIComponent('isbn:' + isbn) +
+      '&maxResults=5';
+
+    const respuesta = await fetch(url);
+
+    if (!respuesta.ok) {
+      throw new Error(
+        'Google Books respondió con el código ' +
+        respuesta.status
+      );
+    }
+
+    const datos = await respuesta.json();
+
+    if (!datos.items || datos.items.length === 0) {
+      estado.textContent =
+        'No se encontró información para este ISBN. ' +
+        'Puedes capturar los datos manualmente.';
+
+      document.getElementById('riIsbnFinal').value = isbn;
+      return;
+    }
+
+    const coincidencias = datos.items.map(item => {
+      const info = item.volumeInfo || {};
+      const identificadores = info.industryIdentifiers || [];
+
+      const obtenerISBN = tipo => {
+        const encontrado = identificadores.find(
+          elemento => elemento.type === tipo
+        );
+
+        return encontrado ? encontrado.identifier : '';
+      };
+
+      const coincidenciaAnio = String(
+        info.publishedDate || ''
+      ).match(/(19|20)\d{2}/);
+
+      const portada =
+        info.imageLinks &&
+        (
+          info.imageLinks.thumbnail ||
+          info.imageLinks.smallThumbnail
+        )
+          ? String(
+              info.imageLinks.thumbnail ||
+              info.imageLinks.smallThumbnail
+            ).replace('http://', 'https://')
+          : '';
+
+      return {
+        titulo: info.title || '',
+        autores: Array.isArray(info.authors)
+          ? info.authors.join(', ')
+          : '',
+        editorial: info.publisher || '',
+        anio: coincidenciaAnio
+          ? coincidenciaAnio[0]
+          : '',
+        isbn13: obtenerISBN('ISBN_13'),
+        isbn10: obtenerISBN('ISBN_10'),
+        categorias: Array.isArray(info.categories)
+          ? info.categories.join(', ')
+          : '',
+        descripcion: info.description || '',
+        portada: portada
+      };
+    });
+
+    estado.textContent =
+      coincidencias.length +
+      ' coincidencia(s) encontrada(s).';
+
+    document.getElementById('riCoincidencias').innerHTML =
+      coincidencias.map(libro => `
+        <div class="coincidencia">
+          <b>${esc(libro.titulo)}</b>
+
+          <div>
+            ${esc(libro.autores)}
+          </div>
+
+          <div>
+            ${esc(libro.editorial)}
+            ${libro.anio
+              ? ' · ' + esc(libro.anio)
+              : ''}
+          </div>
+
+          <button
+            class="secundario"
+            style="margin-top:8px"
+            onclick='usarFicha(${JSON.stringify(libro)})'>
+            Usar esta ficha
+          </button>
+        </div>
+      `).join('');
+
+    usarFicha(coincidencias[0]);
+
+  } catch (error) {
+    estado.textContent =
+      'No se pudo consultar Google Books: ' +
+      error.message;
+
+    estado.className = 'estado error';
+  }
+}
 function usarFicha(x){
  riTitulo.value=x.titulo||'';riAutor.value=x.autores||'';riEditorial.value=x.editorial||'';
  riAnio.value=x.anio||'';riIsbnFinal.value=x.isbn13||x.isbn10||riIsbnConsulta.value;
